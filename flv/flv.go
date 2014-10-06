@@ -22,6 +22,7 @@ type Frame interface {
 	GetType() TagType
 	GetPrevTagSize() uint32
 	String() string
+	GetFlavor() Flavor
 }
 
 type CFrame struct {
@@ -52,6 +53,11 @@ type AudioFrame struct {
 	Rate     uint32
 	BitSize  AudioSize
 	Channels AudioType
+}
+
+type AACAudioFrame struct {
+	*AudioFrame
+	PacketType AacPacketType
 }
 
 type MetaFrame struct {
@@ -91,6 +97,9 @@ func (f *CFrame) GetType() TagType {
 }
 func (f *CFrame) GetPrevTagSize() uint32 {
 	return f.PrevTagSize
+}
+func (f *CFrame) GetFlavor() Flavor {
+	return f.Flavor
 }
 
 func writeType(w io.Writer, t TagType) error {
@@ -149,6 +158,10 @@ func (f AVCVideoFrame) String() string {
 
 func (f AudioFrame) String() string {
 	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%d,%s,%s,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.Rate, f.BitSize, f.Channels, len(f.CFrame.Body))
+}
+
+func (f AACAudioFrame) String() string {
+	return fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%s,%d,%s,%s,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.PacketType, f.Rate, f.BitSize, f.Channels, len(f.CFrame.Body))
 }
 
 func (f MetaFrame) String() string {
@@ -413,7 +426,15 @@ func (frReader *FlvReader) parseFrame(pFrame *CFrame) (resFrame Frame) {
 			rate := audioRate(AudioRate((uint8(bodyBuf[0]) >> 2) & 0x03))
 			bitSize := AudioSize((uint8(bodyBuf[0]) >> 1) & 0x01)
 			channels := AudioType(uint8(bodyBuf[0]) & 0x01)
-			resFrame = AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
+			aFrame := AudioFrame{CFrame: pFrame, CodecId: codecId, Rate: rate, BitSize: bitSize, Channels: channels}
+
+			switch {
+			case codecId == AUDIO_CODEC_AAC:
+				packetType := AacPacketType(bodyBuf[1])
+				resFrame = AACAudioFrame{AudioFrame: &aFrame, PacketType: packetType}
+			default:
+				resFrame = aFrame
+			}
 		} else {
 			resFrame = AudioFrame{CFrame: pFrame, CodecId: AUDIO_CODEC_UNDEFINED, Rate: audioRate(AUDIO_RATE_UNDEFINED), BitSize: AUDIO_SIZE_UNDEFINED, Channels: AUDIO_TYPE_UNDEFINED}
 		}

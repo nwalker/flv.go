@@ -97,11 +97,11 @@ const (
 	AUDIO_CODEC_UNDEFINED   AudioCodec = 255
 )
 
-type AudioAac byte
+type AacPacketType byte
 
 const (
-	AUDIO_AAC_SEQUENCE_HEADER AudioAac = 0
-	AUDIO_AAC_RAW             AudioAac = 1
+	AUDIO_AAC_SEQUENCE_HEADER AacPacketType = 0
+	AUDIO_AAC_RAW             AacPacketType = 1
 )
 
 type Flavor byte
@@ -175,6 +175,11 @@ var (
 		VIDEO_AVC_NALU:				"NALU",
 		VIDEO_AVC_SEQUENCE_END:		"sequence end",
 	}
+
+	aacptToStr = map[AacPacketType]string{
+		AUDIO_AAC_SEQUENCE_HEADER:	"sequence header",
+		AUDIO_AAC_RAW:				"raw",
+	}
 )
 
 func (vc VideoCodec) String() (s string) {
@@ -207,4 +212,8 @@ func (ar AudioRate) String() (s string) {
 
 func (ac AudioCodec) String() (s string) {
 	return acToStr[ac]
+}
+
+func (apt AacPacketType) String() (s string) {
+	return aacptToStr[apt]
 }
