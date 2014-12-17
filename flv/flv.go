@@ -25,6 +25,10 @@ type Frame interface {
 	GetFlavor() Flavor
 }
 
+type IVideoFrame interface {
+	GetResolution() (uint16, uint16)
+}
+
 type CFrame struct {
 	Stream      uint32
 	Dts         uint32
@@ -147,6 +151,10 @@ func (f VideoFrame) String() string {
 	return s
 }
 
+func (f *VideoFrame) GetResolution() (uint16, uint16) {
+	return f.Width, f.Height
+}
+
 func (f AVCVideoFrame) String() string {
 	s := ""
 	s = fmt.Sprintf("%10d\t%d\t%d\t%s\t%s\t{%s,%dx%d,%d bytes}", f.CFrame.Stream, f.CFrame.Dts, f.CFrame.Position, f.CFrame.Type, f.CodecId, f.PacketType, f.Width, f.Height, len(f.CFrame.Body))
@@ -247,7 +255,7 @@ func (frWriter *FlvWriter) WriteHeader(header *Header) error {
 }
 
 func (fr *FlvReader) Recover(e Error, scanLength int) (broken Frame, err error, seekLength int) {
-	re, ok := e.(*ReadError);
+	re, ok := e.(*ReadError)
 	if !ok {
 		return nil, fmt.Errorf("unrecoverable read error"), 0
 	}
@@ -276,7 +284,7 @@ func (fr *FlvReader) Recover(e Error, scanLength int) (broken Frame, err error, 
 	validTagStart := []byte{8, 9, 18}
 	seekLength = 0
 	for {
-		for ;(seekLength<scanLength) && (bytes.IndexByte(validTagStart, scanBuf[seekLength]) == -1);seekLength++ {
+		for ; (seekLength < scanLength) && (bytes.IndexByte(validTagStart, scanBuf[seekLength]) == -1); seekLength++ {
 		}
 		if seekLength == scanLength {
 			return nil, fmt.Errorf("no valid frames @[%d-%d]", scanStart, int(scanStart)+seekLength), seekLength
@@ -316,7 +324,7 @@ func (frReader *FlvReader) readFrame() (*CFrame, Error) {
 		return nil, nil
 	}
 	if TagSize(n) != TAG_HEADER_LENGTH {
-		return nil, Unrecoverable( fmt.Sprintf("bad tag length=%d", n), curPos)
+		return nil, Unrecoverable(fmt.Sprintf("bad tag length=%d", n), curPos)
 	}
 	if err != nil {
 		return nil, Unrecoverable(err.Error(), curPos)
@@ -357,12 +365,11 @@ func (frReader *FlvReader) readFrame() (*CFrame, Error) {
 		Body:        bodyBuf,
 		PrevTagSize: prevTagSize,
 	}
-	if prevTagSize != bodyLen + uint32(TAG_HEADER_LENGTH) {
+	if prevTagSize != bodyLen+uint32(TAG_HEADER_LENGTH) {
 		return nil, IncompleteFrameError(pFrame)
 	}
 	return pFrame, nil
 }
-
 
 func (frReader *FlvReader) parseFrame(pFrame *CFrame) (resFrame Frame) {
 	bodyBuf := pFrame.Body
