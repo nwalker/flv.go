@@ -151,7 +151,7 @@ func (f VideoFrame) String() string {
 	return s
 }
 
-func (f *VideoFrame) GetResolution() (uint16, uint16) {
+func (f VideoFrame) GetResolution() (uint16, uint16) {
 	return f.Width, f.Height
 }
 
